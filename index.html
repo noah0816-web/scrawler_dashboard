@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>舆情监控工具</title>
+  <style>
+    /* ─── CSS 变量 ─── */
+    :root {
+      --primary:     #2563eb;
+      --primary-d:   #1d4ed8;
+      --primary-l:   #dbeafe;
+      --success:     #16a34a;
+      --success-l:   #dcfce7;
+      --danger:      #dc2626;
+      --danger-l:    #fee2e2;
+      --warn:        #d97706;
+      --warn-l:      #fef3c7;
+      --gray-50:     #f8fafc;
+      --gray-100:    #f1f5f9;
+      --gray-200:    #e2e8f0;
+      --gray-400:    #94a3b8;
+      --gray-600:    #475569;
+      --gray-800:    #1e293b;
+      --radius:      10px;
+      --shadow:      0 1px 4px rgba(0,0,0,.08);
+      --shadow-md:   0 4px 12px rgba(0,0,0,.12);
+    }
+
+    /* ─── 基础重置 ─── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC",
+                   "Microsoft YaHei", "Segoe UI", sans-serif;
+      background: var(--gray-100);
+      color: var(--gray-800);
+      min-height: 100vh;
+    }
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    input, textarea, select {
+      font-family: inherit;
+      font-size: 14px;
+      border: 1px solid var(--gray-200);
+      border-radius: 6px;
+      padding: 8px 12px;
+      width: 100%;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+      background: #fff;
+    }
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+    }
+    label { font-size: 13px; font-weight: 600; color: var(--gray-600); display: block; margin-bottom: 6px; }
+    button {
+      cursor: pointer; font-family: inherit; font-size: 14px;
+      border: none; border-radius: 7px; padding: 9px 20px;
+      font-weight: 600; transition: all .2s; display: inline-flex;
+      align-items: center; gap: 6px;
+    }
+    button:active { transform: scale(.97); }
+
+    /* ─── 布局 ─── */
+    .topbar {
+      background: var(--primary);
+      color: #fff;
+      padding: 0 32px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    }
+    .topbar h1 { font-size: 18px; font-weight: 700; }
+    .topbar small { font-size: 12px; opacity: .7; }
+
+    .page { max-width: 1100px; margin: 0 auto; padding: 28px 20px 60px; }
+
+    .card {
+      background: #fff;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: 15px; font-weight: 700;
+      color: var(--gray-800);
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--gray-200);
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    /* ─── 表单网格 ─── */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 24px; }
+    .form-group { display: flex; flex-direction: column; }
+    .form-group.full { grid-column: 1 / -1; }
+
+    /* ─── 快捷日期按钮 ─── */
+    .date-row { display: flex; align-items: flex-end; gap: 10px; }
+    .date-row .date-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex: 1; }
+    .quick-btns { display: flex; gap: 6px; flex-wrap: wrap; align-self: flex-end; margin-bottom: 0; }
+    .btn-quick {
+      background: var(--gray-100); color: var(--gray-600);
+      padding: 7px 12px; font-size: 12px; border-radius: 6px; font-weight: 500;
+    }
+    .btn-quick:hover { background: var(--primary-l); color: var(--primary); }
+    .btn-quick.active { background: var(--primary); color: #fff; }
+
+    /* ─── 站点选择 ─── */
+    .site-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .site-chip {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px;
+      border: 1.5px solid var(--gray-200);
+      border-radius: 8px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 13px;
+      transition: all .15s;
+    }
+    .site-chip:hover { border-color: var(--primary); background: var(--primary-l); }
+    .site-chip input[type="checkbox"] { display: none; }
+    .site-chip.checked { border-color: var(--primary); background: var(--primary-l); color: var(--primary); font-weight: 600; }
+    .site-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gray-200); flex-shrink: 0; }
+    .site-chip.checked .dot { background: var(--primary); }
+
+    /* ─── 操作按钮 ─── */
+    .action-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .btn-primary   { background: var(--primary); color: #fff; }
+    .btn-primary:hover   { background: var(--primary-d); }
+    .btn-danger    { background: var(--danger);  color: #fff; }
+    .btn-danger:hover    { background: #b91c1c; }
+    .btn-secondary { background: var(--gray-100); color: var(--gray-600); }
+    .btn-secondary:hover { background: var(--gray-200); }
+    .btn-success   { background: var(--success); color: #fff; }
+    .btn-success:hover   { background: #15803d; }
+    .btn-outline   { background: transparent; border: 1.5px solid var(--primary); color: var(--primary); }
+    .btn-outline:hover   { background: var(--primary-l); }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+    button:disabled { opacity: .45; cursor: not-allowed; }
+
+    /* ─── 进度区 ─── */
+    #progress-section { display: none; }
+    .progress-bar-wrap {
+      background: var(--gray-200); border-radius: 999px;
+      height: 8px; margin-bottom: 12px; overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%; border-radius: 999px;
+      background: linear-gradient(90deg, var(--primary), #60a5fa);
+      transition: width .4s;
+      animation: pulse-bar 2s infinite;
+    }
+    @keyframes pulse-bar {
+      0%, 100% { opacity: 1; } 50% { opacity: .7; }
+    }
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 600;
+    }
+    .badge-running  { background: #dbeafe; color: var(--primary); }
+    .badge-done     { background: var(--success-l); color: var(--success); }
+    .badge-error    { background: var(--danger-l); color: var(--danger); }
+    .badge-stopped  { background: var(--warn-l); color: var(--warn); }
+
+    .log-box {
+      background: #0f172a; color: #94a3b8;
+      border-radius: 8px; padding: 14px;
+      font-family: "Cascadia Code", "Consolas", monospace;
+      font-size: 12px; line-height: 1.7;
+      height: 180px; overflow-y: auto;
+      margin-top: 12px;
+    }
+    .log-box .log-line { white-space: pre-wrap; word-break: break-all; }
+    .log-box .log-line.info  { color: #94a3b8; }
+    .log-box .log-line.ok    { color: #4ade80; }
+    .log-box .log-line.warn  { color: #fbbf24; }
+
+    /* ─── 结果区 ─── */
+    #results-section { display: none; }
+    .results-header {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .results-count {
+      font-size: 15px; font-weight: 700;
+      background: var(--primary-l); color: var(--primary);
+      padding: 4px 14px; border-radius: 999px;
+    }
+    .filter-bar {
+      display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;
+    }
+    .filter-bar input { max-width: 280px; }
+    .filter-bar select { max-width: 180px; }
+
+    /* 导出按钮组 */
+    .export-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+
+    /* 结果表格 */
+    .table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid var(--gray-200); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th {
+      background: var(--gray-50); padding: 11px 14px;
+      text-align: left; font-weight: 600; color: var(--gray-600);
+      border-bottom: 1px solid var(--gray-200);
+      white-space: nowrap; cursor: pointer; user-select: none;
+    }
+    thead th:hover { background: var(--primary-l); color: var(--primary); }
+    thead th .sort-icon { font-size: 10px; opacity: .5; margin-left: 4px; }
+    tbody tr { border-bottom: 1px solid var(--gray-100); transition: background .15s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--gray-50); }
+    td { padding: 10px 14px; vertical-align: top; }
+    td.title-cell { min-width: 220px; max-width: 340px; }
+    td.title-cell a { font-weight: 600; color: var(--gray-800); line-height: 1.4; }
+    td.title-cell a:hover { color: var(--primary); }
+    td.content-cell {
+      min-width: 280px; max-width: 460px;
+      color: var(--gray-600); line-height: 1.6;
+    }
+    .truncated { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .expand-btn { color: var(--primary); font-size: 12px; cursor: pointer; background: none; border: none; padding: 2px 0; font-weight: 500; }
+    td.platform-cell { white-space: nowrap; }
+    .platform-tag {
+      background: var(--primary-l); color: var(--primary);
+      padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600;
+    }
+    td.date-cell { white-space: nowrap; color: var(--gray-400); font-size: 12px; min-width: 90px; }
+
+    /* 分页 */
+    .pagination { display: flex; gap: 6px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+    .page-btn {
+      width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
+      border-radius: 7px; background: #fff; border: 1px solid var(--gray-200);
+      font-size: 13px; color: var(--gray-600); cursor: pointer; transition: all .15s;
+    }
+    .page-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .page-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .page-btn.disabled { opacity: .4; cursor: default; }
+
+    /* ─── 定时任务 Modal ─── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.45); z-index: 100;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #fff; border-radius: 14px;
+      padding: 28px; width: 480px; max-width: 95vw;
+      box-shadow: var(--shadow-md);
+    }
+    .modal h3 { font-size: 17px; font-weight: 700; margin-bottom: 20px; }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+    .schedule-list { margin-top: 16px; }
+    .schedule-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 0; border-bottom: 1px solid var(--gray-100);
+      font-size: 13px;
+    }
+    .schedule-item:last-child { border-bottom: none; }
+    .schedule-item .name { font-weight: 600; }
+    .schedule-item .next { color: var(--gray-400); font-size: 12px; margin-top: 2px; }
+
+    /* ─── 空状态 ─── */
+    .empty-state {
+      text-align: center; padding: 48px 20px;
+      color: var(--gray-400);
+    }
+    .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-state p { font-size: 14px; }
+
+    /* ─── 响应式 ─── */
+    @media (max-width: 640px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .date-row { flex-direction: column; align-items: stretch; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- 顶部栏 -->
+<div class="topbar">
+  <span style="font-size:22px">📡</span>
+  <div>
+    <h1>舆情监控工具</h1>
+    <small>数码产品口碑 · 关键词 · 论坛全文爬取</small>
+  </div>
+</div>
+
+<div class="page">
+
+  <!-- ① 搜索配置 -->
+  <div class="card">
+    <div class="card-title">🔍 搜索配置</div>
+
+    <div class="form-grid">
+
+      <!-- 关键词 -->
+      <div class="form-group full">
+        <label>关键词 <span style="font-weight:400;color:var(--gray-400)">（多个关键词用逗号分隔，如：iPhone 16, 电池续航, 发热）</span></label>
+        <textarea id="keywords" rows="3" placeholder="在此输入你想监控的关键词，例如：iPhone 16 Pro, 充电, 屏幕素质" style="resize:vertical"></textarea>
+      </div>
+
+      <!-- 时间范围 -->
+      <div class="form-group full">
+        <label>时间范围</label>
+        <div class="date-row">
+          <div class="date-inputs">
+            <input type="date" id="start-date" title="开始日期">
+            <input type="date" id="end-date" title="结束日期">
+          </div>
+          <div class="quick-btns">
+            <button class="btn-quick" onclick="setDateRange(0)">今天</button>
+            <button class="btn-quick" onclick="setDateRange(7)">近7天</button>
+            <button class="btn-quick active" onclick="setDateRange(30)">近30天</button>
+            <button class="btn-quick" onclick="setDateRange(90)">近90天</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 目标网站 -->
+      <div class="form-group full">
+        <label>目标论坛 <span style="font-weight:400;color:var(--gray-400)">（不选则全网搜索）</span></label>
+        <div class="site-grid" id="site-chips">
+          <!-- 由 JS 渲染 -->
+        </div>
+        <input type="text" id="custom-sites" placeholder="自定义站点（用逗号分隔，如：bbs.voc.com.cn, zol.com.cn）" style="margin-top:4px">
+      </div>
+
+      <!-- 种子URL（用于公众号/头条用户页等入口页） -->
+      <div class="form-group full">
+        <label>种子URL（可选） <span style="font-weight:400;color:var(--gray-400)">（每行一个，用于从入口页发现文章链接，比如头条用户页）</span></label>
+        <textarea id="seed-urls" rows="3" placeholder="例如：&#10;https://www.toutiao.com/c/user/token/xxx/&#10;https://www.ednchina.com/" style="resize:vertical"></textarea>
+      </div>
+
+      <!-- 每站数量 -->
+      <div class="form-group">
+        <label>每个站点最多抓取条数</label>
+        <input type="number" id="max-per-site" value="20" min="5" max="100" style="width:140px">
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ② 操作栏 -->
+  <div class="card" style="padding:16px 24px">
+    <div class="action-bar">
+      <button class="btn-primary" id="btn-start" onclick="startSearch()">▶ 开始抓取</button>
+      <button class="btn-danger"  id="btn-stop"  onclick="stopSearch()" disabled>⏹ 停止</button>
+      <button class="btn-secondary btn-outline" onclick="openScheduleModal()">⏰ 定时任务</button>
+      <span id="status-badge" style="display:none"></span>
+    </div>
+  </div>
+
+  <!-- ③ 进度区 -->
+  <div class="card" id="progress-section">
+    <div class="card-title" style="margin-bottom:12px">📥 抓取进度</div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar" id="progress-bar" style="width:100%"></div>
+    </div>
+    <div id="progress-msg" style="font-size:13px;color:var(--gray-600);margin-bottom:8px"></div>
+    <div class="log-box" id="log-box"></div>
+  </div>
+
+  <!-- ④ 结果区 -->
+  <div class="card" id="results-section">
+    <div class="card-title">📊 抓取结果</div>
+
+    <!-- 结果头部：计数 + 过滤 + 导出 -->
+    <div class="results-header">
+      <span class="results-count" id="results-count">0 条</span>
+      <div class="filter-bar" style="flex:1">
+        <input type="text" id="filter-text" placeholder="过滤标题/正文..." oninput="applyFilter()" style="max-width:260px">
+        <select id="filter-platform" onchange="applyFilter()">
+          <option value="">全部平台</option>
+        </select>
+      </div>
+      <div class="export-btns">
+        <button class="btn-secondary btn-sm" onclick="doExport('csv')">⬇ CSV</button>
+        <button class="btn-secondary btn-sm" onclick="doExport('excel')">⬇ Excel</button>
+        <button class="btn-secondary btn-sm" onclick="doExport('html')">⬇ HTML 报告</button>
+      </div>
+    </div>
+
+    <!-- 表格 -->
+    <div class="table-wrap">
+      <table id="results-table">
+        <thead>
+          <tr>
+            <th onclick="sortBy('title')">标题 <span class="sort-icon">⇅</span></th>
+            <th onclick="sortBy('platform')">平台 <span class="sort-icon">⇅</span></th>
+            <th>正文摘要</th>
+            <th onclick="sortBy('publish_date')">发布日期 <span class="sort-icon">⇅</span></th>
+          </tr>
+        </thead>
+        <tbody id="results-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- 分页 -->
+    <div class="pagination" id="pagination"></div>
+  </div>
+
+</div><!-- /page -->
+
+<!-- ─── 定时任务 Modal ─── -->
+<div class="modal-overlay" id="schedule-modal">
+  <div class="modal">
+    <h3>⏰ 定时任务配置</h3>
+
+    <div class="form-group" style="margin-bottom:14px">
+      <label>任务名称</label>
+      <input type="text" id="sched-name" placeholder="如：iPhone 舆情每日监控">
+    </div>
+    <div class="form-group" style="margin-bottom:14px">
+      <label>执行间隔（小时）</label>
+      <input type="number" id="sched-interval" value="24" min="1" max="168" style="width:120px">
+      <small style="color:var(--gray-400);font-size:12px;margin-top:4px;display:block">
+        将使用当前搜索配置，首次立即执行后按间隔循环
+      </small>
+    </div>
+
+    <!-- 已有定时任务 -->
+    <div class="card-title" style="font-size:13px;margin-bottom:4px;border:none;padding-bottom:0">已配置的定时任务</div>
+    <div class="schedule-list" id="schedule-list">
+      <div class="empty-state"><p>暂无定时任务</p></div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeScheduleModal()">取消</button>
+      <button class="btn-primary" onclick="addSchedule()">+ 添加定时任务</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// 常量
+// ═══════════════════════════════════════════
+const API = '';  // 同源，空前缀
+const SITES = [
+  { label: '知乎',     domain: 'zhihu.com'          },
+  { label: '百度贴吧', domain: 'tieba.baidu.com'    },
+  { label: 'V2EX',    domain: 'v2ex.com'            },
+  { label: '少数派',   domain: 'sspai.com'           },
+  { label: '36氪',    domain: '36kr.com'            },
+  { label: '虎嗅',    domain: 'huxiu.com'           },
+  { label: '虎扑',    domain: 'hupu.com'            },
+  { label: '数码之家', domain: 'mydigit.cn'          },
+  { label: 'B站',     domain: 'bilibili.com'        },
+  { label: '微博',    domain: 'weibo.com'           },
+  { label: '今日头条', domain: 'toutiao.com'         },
+  { label: 'EDN China',domain: 'ednchina.com'        },
+];
+
+const PAGE_SIZE = 15;
+
+// ═══════════════════════════════════════════
+// 状态
+// ═══════════════════════════════════════════
+let currentTaskId  = null;
+let pollTimer      = null;
+let allResults     = [];
+let filteredResults= [];
+let currentPage    = 1;
+let sortField      = '';
+let sortAsc        = true;
+
+// ═══════════════════════════════════════════
+// 初始化
+// ═══════════════════════════════════════════
+(function init() {
+  renderSiteChips();
+  setDateRange(30);
+})();
+
+function renderSiteChips() {
+  const wrap = document.getElementById('site-chips');
+  wrap.innerHTML = SITES.map(s => `
+    <label class="site-chip" id="chip-${s.domain}" onclick="toggleChip(this)">
+      <input type="checkbox" value="${s.domain}">
+      <span class="dot"></span>
+      ${s.label}
+      <small style="color:var(--gray-400);font-size:11px;">${s.domain}</small>
+    </label>
+  `).join('');
+}
+
+function toggleChip(el) {
+  const cb = el.querySelector('input');
+  cb.checked = !cb.checked;
+  el.classList.toggle('checked', cb.checked);
+}
+
+// ═══════════════════════════════════════════
+// 日期快捷
+// ═══════════════════════════════════════════
+function setDateRange(days) {
+  document.querySelectorAll('.btn-quick').forEach(b => b.classList.remove('active'));
+  event && event.target && event.target.classList.add('active');
+
+  const end   = new Date();
+  const start = new Date();
+  if (days > 0) start.setDate(start.getDate() - days);
+
+  document.getElementById('start-date').value = fmtDate(start);
+  document.getElementById('end-date').value   = fmtDate(end);
+}
+
+function fmtDate(d) {
+  return d.toISOString().slice(0, 10);
+}
+
+// ═══════════════════════════════════════════
+// 搜索控制
+// ═══════════════════════════════════════════
+async function startSearch() {
+  const keywords = document.getElementById('keywords').value.trim();
+  if (!keywords) { alert('请输入关键词'); return; }
+
+  const kwList = keywords.split(/[,，\n]+/).map(s => s.trim()).filter(Boolean);
+  const startDate = document.getElementById('start-date').value;
+  const endDate   = document.getElementById('end-date').value;
+  if (!startDate || !endDate) { alert('请选择时间范围'); return; }
+
+  const seedUrlsRaw = (document.getElementById('seed-urls')?.value || '').trim();
+  const seedUrls = seedUrlsRaw
+    ? seedUrlsRaw.split(/\n+/).map(s => s.trim()).filter(Boolean)
+    : [];
+
+  // 收集选中站点
+  const checkedSites = [...document.querySelectorAll('#site-chips input:checked')]
+    .map(cb => cb.value);
+  const customRaw  = document.getElementById('custom-sites').value.trim();
+  const customSites = customRaw ? customRaw.split(/[,，\s]+/).filter(Boolean) : [];
+  const sites = [...checkedSites, ...customSites];
+
+  const params = {
+    keywords:    kwList,
+    sites:       sites,
+    seed_urls:   seedUrls,
+    start_date:  startDate,
+    end_date:    endDate,
+    max_per_site: parseInt(document.getElementById('max-per-site').value) || 20,
+  };
+
+  // 重置状态
+  allResults = [];
+  filteredResults = [];
+  currentPage = 1;
+  document.getElementById('results-section').style.display = 'none';
+
+  // UI
+  setSearchingState(true);
+  showSection('progress-section');
+  clearLogs();
+  appendLog('任务提交中...', 'info');
+
+  try {
+    const resp = await fetch(`${API}/api/search`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    currentTaskId = data.task_id;
+    appendLog(`任务 ID: ${currentTaskId}`, 'ok');
+    pollTimer = setInterval(pollStatus, 1500);
+  } catch (e) {
+    appendLog(`启动失败: ${e.message}`, 'warn');
+    setSearchingState(false);
+  }
+}
+
+async function pollStatus() {
+  if (!currentTaskId) return;
+  try {
+    const resp = await fetch(`${API}/api/status/${currentTaskId}`);
+    const data = await resp.json();
+
+    updateLogs(data.logs || []);
+    document.getElementById('progress-msg').textContent =
+      `已发现 ${data.count} 条 · ${data.message}`;
+    setBadge(data.status);
+
+    if (data.status === 'done') {
+      clearInterval(pollTimer);
+      setSearchingState(false);
+      await loadResults();
+    } else if (['error', 'stopped'].includes(data.status)) {
+      clearInterval(pollTimer);
+      setSearchingState(false);
+    }
+  } catch { /* 忽略网络波动 */ }
+}
+
+async function stopSearch() {
+  if (!currentTaskId) return;
+  clearInterval(pollTimer);
+  await fetch(`${API}/api/stop/${currentTaskId}`, { method: 'POST' });
+  setSearchingState(false);
+  setBadge('stopped');
+  appendLog('任务已停止', 'warn');
+  if (allResults.length === 0) await loadResults();
+}
+
+async function loadResults() {
+  const resp = await fetch(`${API}/api/results/${currentTaskId}`);
+  allResults = await resp.json();
+  if (!Array.isArray(allResults)) allResults = [];
+  filteredResults = [...allResults];
+  buildPlatformFilter();
+  renderTable();
+  showSection('results-section');
+}
+
+// ═══════════════════════════════════════════
+// 表格 & 过滤
+// ═══════════════════════════════════════════
+function applyFilter() {
+  const text = document.getElementById('filter-text').value.toLowerCase();
+  const plat = document.getElementById('filter-platform').value;
+  filteredResults = allResults.filter(r => {
+    const matchText = !text ||
+      (r.title || '').toLowerCase().includes(text) ||
+      (r.content || '').toLowerCase().includes(text);
+    const matchPlat = !plat || r.platform === plat;
+    return matchText && matchPlat;
+  });
+  currentPage = 1;
+  renderTable();
+}
+
+function sortBy(field) {
+  if (sortField === field) sortAsc = !sortAsc;
+  else { sortField = field; sortAsc = true; }
+  filteredResults.sort((a, b) => {
+    const va = (a[field] || '').toString();
+    const vb = (b[field] || '').toString();
+    return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+  });
+  renderTable();
+}
+
+function renderTable() {
+  const tbody = document.getElementById('results-tbody');
+  document.getElementById('results-count').textContent = `${filteredResults.length} 条`;
+
+  if (filteredResults.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4">
+      <div class="empty-state">
+        <div class="icon">🔭</div>
+        <p>没有找到匹配的数据</p>
+      </div>
+    </td></tr>`;
+    document.getElementById('pagination').innerHTML = '';
+    return;
+  }
+
+  const start  = (currentPage - 1) * PAGE_SIZE;
+  const paginated = filteredResults.slice(start, start + PAGE_SIZE);
+
+  tbody.innerHTML = paginated.map((r, i) => {
+    const idx = start + i;
+    const contentPreview = (r.content || r.snippet || '').substring(0, 300);
+    const contentId = `content-${idx}`;
+    return `
+    <tr>
+      <td class="title-cell">
+        <a href="${esc(r.url)}" target="_blank">${esc(r.title || '无标题')}</a>
+      </td>
+      <td class="platform-cell">
+        <span class="platform-tag">${esc(r.platform || '未知')}</span>
+      </td>
+      <td class="content-cell">
+        <div class="truncated" id="${contentId}">${esc(contentPreview)}</div>
+        ${(r.content || '').length > 300
+          ? `<button class="expand-btn" onclick="toggleExpand('${contentId}', this)">展开全文 ▾</button>`
+          : ''}
+      </td>
+      <td class="date-cell">${esc(r.publish_date || r.crawl_time || '')}</td>
+    </tr>`;
+  }).join('');
+
+  renderPagination();
+}
+
+function toggleExpand(id, btn) {
+  const el = document.getElementById(id);
+  if (el.classList.contains('truncated')) {
+    el.classList.remove('truncated');
+    btn.textContent = '收起 ▴';
+  } else {
+    el.classList.add('truncated');
+    btn.textContent = '展开全文 ▾';
+  }
+}
+
+function renderPagination() {
+  const total = Math.ceil(filteredResults.length / PAGE_SIZE);
+  if (total <= 1) { document.getElementById('pagination').innerHTML = ''; return; }
+
+  let html = `<div class="page-btn ${currentPage === 1 ? 'disabled' : ''}"
+    onclick="${currentPage > 1 ? `goPage(${currentPage - 1})` : ''}">‹</div>`;
+
+  for (let p = 1; p <= total; p++) {
+    if (total > 7 && Math.abs(p - currentPage) > 2 && p !== 1 && p !== total) {
+      if (p === 2 || p === total - 1) html += `<div class="page-btn disabled">…</div>`;
+      continue;
+    }
+    html += `<div class="page-btn ${p === currentPage ? 'active' : ''}"
+      onclick="goPage(${p})">${p}</div>`;
+  }
+
+  html += `<div class="page-btn ${currentPage === total ? 'disabled' : ''}"
+    onclick="${currentPage < total ? `goPage(${currentPage + 1})` : ''}">›</div>`;
+
+  document.getElementById('pagination').innerHTML = html;
+}
+
+function goPage(p) { currentPage = p; renderTable(); window.scrollTo(0, document.getElementById('results-section').offsetTop - 20); }
+
+function buildPlatformFilter() {
+  const platforms = [...new Set(allResults.map(r => r.platform).filter(Boolean))];
+  const sel = document.getElementById('filter-platform');
+  sel.innerHTML = '<option value="">全部平台</option>' +
+    platforms.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+}
+
+// ═══════════════════════════════════════════
+// 导出
+// ═══════════════════════════════════════════
+async function doExport(fmt) {
+  if (!currentTaskId) { alert('请先执行一次搜索'); return; }
+  window.location.href = `${API}/api/export/${currentTaskId}/${fmt}`;
+}
+
+// ═══════════════════════════════════════════
+// 定时任务 Modal
+// ═══════════════════════════════════════════
+function openScheduleModal() {
+  document.getElementById('schedule-modal').classList.add('open');
+  loadSchedules();
+}
+function closeScheduleModal() {
+  document.getElementById('schedule-modal').classList.remove('open');
+}
+
+async function loadSchedules() {
+  const resp = await fetch(`${API}/api/schedule`);
+  const jobs = await resp.json();
+  const list = document.getElementById('schedule-list');
+  if (!jobs.length) {
+    list.innerHTML = '<div class="empty-state"><p>暂无定时任务</p></div>';
+    return;
+  }
+  list.innerHTML = jobs.map(j => `
+    <div class="schedule-item">
+      <div>
+        <div class="name">${esc(j.name)}</div>
+        <div class="next">下次执行：${j.next_run ? j.next_run.substring(0, 19) : '未知'}</div>
+        <div class="next">规则：${esc(j.trigger)}</div>
+      </div>
+      <button class="btn-danger btn-sm" onclick="deleteSchedule('${j.id}')">删除</button>
+    </div>
+  `).join('');
+}
+
+async function addSchedule() {
+  const keywords = document.getElementById('keywords').value.trim();
+  if (!keywords) { alert('请先在主界面填写关键词'); return; }
+
+  const kwList = keywords.split(/[,，\n]+/).map(s => s.trim()).filter(Boolean);
+  const checkedSites = [...document.querySelectorAll('#site-chips input:checked')].map(cb => cb.value);
+  const customRaw  = document.getElementById('custom-sites').value.trim();
+  const customSites = customRaw ? customRaw.split(/[,，\s]+/).filter(Boolean) : [];
+  const seedUrlsRaw = (document.getElementById('seed-urls')?.value || '').trim();
+  const seedUrls = seedUrlsRaw
+    ? seedUrlsRaw.split(/\n+/).map(s => s.trim()).filter(Boolean)
+    : [];
+
+  const params = {
+    keywords:    kwList,
+    sites:       [...checkedSites, ...customSites],
+    seed_urls:   seedUrls,
+    start_date:  document.getElementById('start-date').value,
+    end_date:    document.getElementById('end-date').value,
+    max_per_site: parseInt(document.getElementById('max-per-site').value) || 20,
+  };
+
+  const body = {
+    name:           document.getElementById('sched-name').value || undefined,
+    interval_hours: parseFloat(document.getElementById('sched-interval').value) || 24,
+    params,
+  };
+
+  try {
+    const resp = await fetch(`${API}/api/schedule`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    alert(`定时任务已添加：${data.name}（每 ${data.interval_hours} 小时执行）`);
+    loadSchedules();
+  } catch (e) {
+    alert(`添加失败: ${e.message}`);
+  }
+}
+
+async function deleteSchedule(jobId) {
+  if (!confirm('确认删除此定时任务？')) return;
+  await fetch(`${API}/api/schedule/${jobId}`, { method: 'DELETE' });
+  loadSchedules();
+}
+
+// ═══════════════════════════════════════════
+// UI 工具
+// ═══════════════════════════════════════════
+function setSearchingState(isSearching) {
+  document.getElementById('btn-start').disabled = isSearching;
+  document.getElementById('btn-stop').disabled  = !isSearching;
+}
+
+function showSection(id) {
+  document.getElementById(id).style.display = 'block';
+}
+
+function clearLogs() {
+  document.getElementById('log-box').innerHTML = '';
+}
+
+let _logSet = new Set();
+function updateLogs(logs) {
+  const box = document.getElementById('log-box');
+  logs.forEach(line => {
+    if (_logSet.has(line)) return;
+    _logSet.add(line);
+    appendLogLine(line);
+  });
+}
+
+function appendLog(msg, type = 'info') {
+  appendLogLine(`${new Date().toLocaleTimeString()} ${msg}`, type);
+}
+
+function appendLogLine(line, type = 'info') {
+  const box = document.getElementById('log-box');
+  const isBottom = box.scrollHeight - box.scrollTop <= box.clientHeight + 40;
+  const el = document.createElement('div');
+  el.className = `log-line ${type}`;
+  el.textContent = line;
+  box.appendChild(el);
+  if (isBottom) box.scrollTop = box.scrollHeight;
+}
+
+function setBadge(status) {
+  const el = document.getElementById('status-badge');
+  const map = {
+    running: ['badge-running', '⟳ 运行中'],
+    done:    ['badge-done',    '✓ 完成'],
+    error:   ['badge-error',   '✗ 出错'],
+    stopped: ['badge-stopped', '⏹ 已停止'],
+    pending: ['badge-running', '· 等待中'],
+  };
+  const [cls, text] = map[status] || ['badge-running', status];
+  el.className = `status-badge ${cls}`;
+  el.textContent = text;
+  el.style.display = 'inline-flex';
+}
+
+function esc(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// 点击遮罩关闭 Modal
+document.getElementById('schedule-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeScheduleModal();
+});
+</script>
+</body>
+</html>
