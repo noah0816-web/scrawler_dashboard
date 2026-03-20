@@ -48,8 +48,8 @@ if start_btn:
                 results = scrape(
                     keywords=[keywords],
                     sites=site_list,
-                    start_date=start_date,
-                    end_date=end_date,
+                    start_date=start_dt,  
+                    end_date=end_dt,
                     max_per_site=max_results,
                     progress_callback=progress_log
                 )
