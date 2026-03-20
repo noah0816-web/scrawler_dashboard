@@ -34,7 +34,7 @@ if start_btn:
     if not keywords:
         st.warning("请先输入关键词！")
     else:
-        # 【升级点】智能解析：区分输入的是纯域名，还是包含 https 的完整种子链接
+        # 智能解析：区分输入的是纯域名还是完整网址
         raw_lines = [s.strip() for s in sites_input.split('\n') if s.strip()]
         site_list = []
         seed_list = []
@@ -51,15 +51,15 @@ if start_btn:
 
         with st.spinner('正在检索并提取正文，请耐心等待...'):
             try:
-                # 【修复点】将 Streamlit 的 date 对象转换为 datetime 对象
+                # 修复日期格式问题
                 start_dt = datetime.combine(start_date, datetime.min.time())
                 end_dt = datetime.combine(end_date, datetime.max.time())
                 
-                # 调用 scraper.py 里的函数
+                # 调用爬虫核心逻辑
                 results = scrape(
                     keywords=[keywords],
                     sites=site_list,
-                    seed_urls=seed_list,  # 将完整网址传给 seed_urls 处理
+                    seed_urls=seed_list,
                     start_date=start_dt,
                     end_date=end_dt,
                     max_per_site=max_results,
@@ -73,17 +73,14 @@ if start_btn:
                     
                     df = pd.DataFrame(results)
                     display_cols = ['title', 'platform', 'publish_date', 'snippet']
-                    # 确保要展示的列存在于结果中
                     show_cols = [c for c in display_cols if c in df.columns]
                     st.dataframe(df[show_cols], use_container_width=True)
                     
                     # --- 下载按钮区域 ---
                     st.subheader("📥 导出数据")
-                    
-                    # 创建两列，并排显示两个按钮
                     col_csv, col_excel = st.columns(2)
                     
-                    # 1. 导出 CSV
+                    # 导出 CSV
                     csv_data = df.to_csv(index=False).encode('utf-8-sig')
                     with col_csv:
                         st.download_button(
@@ -94,7 +91,7 @@ if start_btn:
                             use_container_width=True
                         )
                         
-                    # 2. 导出 Excel (彻底解决乱码)
+                    # 导出 Excel (完美解决中文乱码)
                     excel_buffer = io.BytesIO()
                     df.to_excel(excel_buffer, index=False, engine='openpyxl')
                     with col_excel:
@@ -107,5 +104,7 @@ if start_btn:
                         )
                 else:
                     st.warning("未能抓取到符合条件的数据，请尝试更换关键词或扩大时间范围。")
-
-              
+                    
+            # ↓↓↓ 就是这里，刚才被不小心删掉的报错兜底逻辑 ↓↓↓
+            except Exception as e:
+                st.error(f"抓取过程中发生错误: {e}")
