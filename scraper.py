@@ -590,7 +590,7 @@ def scrape(keywords: list, sites: list, start_date: datetime, end_date: datetime
 
         log(f'[{i + 1}/{len(search_hits)}] {title[:50]}')
 
-        page = fetch_page(url)
+     page = fetch_page(url)
         content = ''
         publish_date = ''
         raw_html_relpath = None
@@ -606,6 +606,10 @@ def scrape(keywords: list, sites: list, start_date: datetime, end_date: datetime
             publish_date = extract_publish_date(html)
             meta = extract_meta_fields(html)
             images = extract_images(html, final_url)
+            
+            # 👇【新增修复】：把临时占位符替换成真实的网页标题！
+            if meta.get("meta_title"):
+                title = meta.get("meta_title")
 
         if not content:
             content = snippet
