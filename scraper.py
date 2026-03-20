@@ -598,7 +598,7 @@ def scrape(keywords: list, sites: list, start_date: datetime, end_date: datetime
         images = []
         final_url = ''
 
-        if page and page.get("html"):
+      if page and page.get("html"):
             html = page["html"]
             final_url = page.get("final_url") or url
             raw_html_relpath = archive_raw_html(task_id=task_id, url=final_url, html=html)
@@ -607,7 +607,7 @@ def scrape(keywords: list, sites: list, start_date: datetime, end_date: datetime
             meta = extract_meta_fields(html)
             images = extract_images(html, final_url)
             
-            # 👇【新增修复】：把临时占位符替换成真实的网页标题！
+            # 👇 注意：下面这行的 if 必须和上面的 images 首字母严格对齐！
             if meta.get("meta_title"):
                 title = meta.get("meta_title")
 
