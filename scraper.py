@@ -124,8 +124,24 @@ def fetch_page(url: str, timeout: int = 20) -> dict | None:
         try:
             resp = requests.get(url, headers=HEADERS, timeout=timeout, proxies=PROXIES_DICT)
             resp.raise_for_status()
+            
+            # ==== 【新增的核心修复点：文件类型过滤器】 ====
+            # 获取目标链接告诉我们的文件类型
+            content_type = resp.headers.get('Content-Type', '').lower()
+            
+            # 定义我们允许抓取的白名单（网页、纯文本、XML）
+            allowed_types = ['text/html', 'text/plain', 'text/xml', 'application/xml', 'application/xhtml']
+            
+            # 如果对方的类型不在白名单里（比如 image/png, application/pdf），直接跳过！
+            if not any(t in content_type for t in allowed_types):
+                logger.warning(f"跳过非网页内容 ({content_type}): {url}")
+                return None
+            # ===============================================
+
+            # 处理编码问题
             if not resp.encoding or resp.encoding.lower() == 'iso-8859-1':
                 resp.encoding = resp.apparent_encoding
+            
             return {
                 "url": url,
                 "final_url": str(resp.url),
