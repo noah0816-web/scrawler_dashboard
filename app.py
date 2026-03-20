@@ -5,7 +5,6 @@ import io
 
 # 导入你写好的核心逻辑
 from scraper import scrape
-from exporter import export_csv, export_excel
 
 st.set_page_config(page_title="舆情监控大盘", layout="wide")
 st.title("📊 舆情监控系统")
@@ -22,7 +21,10 @@ with st.sidebar:
     with col2:
         end_date = st.date_input("结束日期")
         
-    sites = st.text_area("指定站点 (可选, 每行一个)", placeholder="zhihu.com\nsspai.com")
+    st.markdown("---")
+    st.markdown("**指定抓取范围**")
+    sites_input = st.text_area("指定站点或种子URL (每行一个)", 
+                               placeholder="zhihu.com\nhttps://www.toutiao.com/...")
     max_results = st.number_input("每个站点最大抓取数", min_value=1, max_value=50, value=10)
     
     start_btn = st.button("🚀 开始抓取", type="primary", use_container_width=True)
@@ -32,23 +34,33 @@ if start_btn:
     if not keywords:
         st.warning("请先输入关键词！")
     else:
-        # 处理输入参数
-        site_list = [s.strip() for s in sites.split('\n') if s.strip()]
+        # 【升级点】智能解析：区分输入的是纯域名，还是包含 https 的完整种子链接
+        raw_lines = [s.strip() for s in sites_input.split('\n') if s.strip()]
+        site_list = []
+        seed_list = []
+        for line in raw_lines:
+            if line.startswith("http://") or line.startswith("https://"):
+                seed_list.append(line)
+            else:
+                site_list.append(line)
         
-        # 抓取过程状态提示
         status_text = st.empty()
         
-        # 定义一个回调函数，把 scraper 里的日志实时打印到网页上
         def progress_log(msg):
             status_text.info(f"🔄 运行中: {msg}")
 
-        with st.spinner('正在全网检索并提取正文，请耐心等待...'):
+        with st.spinner('正在检索并提取正文，请耐心等待...'):
             try:
-                # 直接调用 scraper.py 里的函数
+                # 【修复点】将 Streamlit 的 date 对象转换为 datetime 对象
+                start_dt = datetime.combine(start_date, datetime.min.time())
+                end_dt = datetime.combine(end_date, datetime.max.time())
+                
+                # 调用 scraper.py 里的函数
                 results = scrape(
                     keywords=[keywords],
                     sites=site_list,
-                    start_date=start_dt,  
+                    seed_urls=seed_list,  # 将完整网址传给 seed_urls 处理
+                    start_date=start_dt,
                     end_date=end_dt,
                     max_per_site=max_results,
                     progress_callback=progress_log
@@ -59,16 +71,13 @@ if start_btn:
                 if results:
                     st.success(f"🎉 抓取完成！共获取 {len(results)} 条有效数据。")
                     
-                    # 转为 DataFrame 方便在网页展示
                     df = pd.DataFrame(results)
-                    # 调整显示的列
                     display_cols = ['title', 'platform', 'publish_date', 'snippet']
-                    st.dataframe(df[display_cols], use_container_width=True)
+                    # 确保要展示的列存在于结果中
+                    show_cols = [c for c in display_cols if c in df.columns]
+                    st.dataframe(df[show_cols], use_container_width=True)
                     
-                    # --- 下载按钮 ---
                     st.subheader("📥 导出数据")
-                    
-                    # 导出 CSV
                     csv_buffer = io.StringIO()
                     df.to_csv(csv_buffer, index=False)
                     st.download_button(
