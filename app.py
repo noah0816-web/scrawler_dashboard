@@ -108,5 +108,4 @@ if start_btn:
                 else:
                     st.warning("未能抓取到符合条件的数据，请尝试更换关键词或扩大时间范围。")
 
-                except Exception as e:
-                st.error(f"抓取过程中发生错误: {e}")
+              
