@@ -77,8 +77,10 @@ if start_btn:
                     show_cols = [c for c in display_cols if c in df.columns]
                     st.dataframe(df[show_cols], use_container_width=True)
                     
+                    # --- 下载按钮区域 ---
                     st.subheader("📥 导出数据")
-                   # 创建两列，并排显示两个按钮
+                    
+                    # 创建两列，并排显示两个按钮
                     col_csv, col_excel = st.columns(2)
                     
                     # 1. 导出 CSV
@@ -103,9 +105,8 @@ if start_btn:
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                             use_container_width=True
                         )
-                    )
                 else:
                     st.warning("未能抓取到符合条件的数据，请尝试更换关键词或扩大时间范围。")
-                    
-            except Exception as e:
+
+                except Exception as e:
                 st.error(f"抓取过程中发生错误: {e}")
