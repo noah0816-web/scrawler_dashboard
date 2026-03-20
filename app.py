@@ -1,7 +1,7 @@
 """
 app.py - Flask 后端服务
 启动方式：p·ython app.py
-浏览器访问：http://localhost:5000
+浏览器访问：http://localhost:5001
 """
 
 import os
@@ -272,6 +272,6 @@ def api_delete_schedule(job_id: str):
 if __name__ == '__main__':
     print('=' * 50)
     print('  舆情监控工具 启动中...')
-    print('  请在浏览器访问: http://localhost:5000')
+    print('  请在浏览器访问: http://localhost:5001')
     print('=' * 50)
-    app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
+    app.run(host='0.0.0.0', port=5001, debug=False, use_reloader=False)
