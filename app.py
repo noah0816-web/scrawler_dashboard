@@ -78,13 +78,31 @@ if start_btn:
                     st.dataframe(df[show_cols], use_container_width=True)
                     
                     st.subheader("📥 导出数据")
-                    csv_buffer = io.StringIO()
-                    df.to_csv(csv_buffer, index=False)
-                    st.download_button(
-                        label="下载 CSV 文件",
-                        data=csv_buffer.getvalue().encode('utf-8-sig'),
-                        file_name=f"舆情数据_{datetime.now().strftime('%Y%m%d')}.csv",
-                        mime="text/csv"
+                   # 创建两列，并排显示两个按钮
+                    col_csv, col_excel = st.columns(2)
+                    
+                    # 1. 导出 CSV
+                    csv_data = df.to_csv(index=False).encode('utf-8-sig')
+                    with col_csv:
+                        st.download_button(
+                            label="📄 下载 CSV 文件",
+                            data=csv_data,
+                            file_name=f"舆情数据_{datetime.now().strftime('%Y%m%d')}.csv",
+                            mime="text/csv",
+                            use_container_width=True
+                        )
+                        
+                    # 2. 导出 Excel (彻底解决乱码)
+                    excel_buffer = io.BytesIO()
+                    df.to_excel(excel_buffer, index=False, engine='openpyxl')
+                    with col_excel:
+                        st.download_button(
+                            label="📊 下载 Excel 文件",
+                            data=excel_buffer.getvalue(),
+                            file_name=f"舆情数据_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            use_container_width=True
+                        )
                     )
                 else:
                     st.warning("未能抓取到符合条件的数据，请尝试更换关键词或扩大时间范围。")
