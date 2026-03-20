@@ -89,15 +89,8 @@ def _normalize_url(base_url: str, href: str) -> str | None:
 
 def get_ddg_timelimit(start_date: datetime, end_date: datetime) -> str:
     """将日期范围转换为 DuckDuckGo timelimit 参数"""
-    now = datetime.now()
-    days = (now - start_date).days
-    if days <= 1:
-        return 'd'
-    if days <= 7:
-        return 'w'
-    if days <= 30:
-        return 'm'
-    return 'y'
+    # 强制关闭 DDG 的自带时间过滤，解决中文站点搜不出结果的 Bug
+    return None
 
 
 def search_ddg(query: str, timelimit: str = None, max_results: int = 20) -> list:
