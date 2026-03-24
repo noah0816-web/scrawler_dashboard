@@ -6,7 +6,7 @@ import io
 # 导入你写好的核心逻辑
 from scraper import scrape
 
-st.set_page_config(page_title="舆情监控大盘", layout="wide")
+st.set_page_config(page_title="VOC爬虫系统", layout="wide")
 st.title("📊 舆情监控系统")
 st.markdown("基于Tavily Search 的轻量级舆情抓取工具")
 
