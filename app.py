@@ -8,7 +8,7 @@ from scraper import scrape
 
 st.set_page_config(page_title="舆情监控大盘", layout="wide")
 st.title("📊 舆情监控系统")
-st.markdown("基于 DuckDuckGo 的轻量级舆情抓取工具")
+st.markdown("基于Tavily Search 的轻量级舆情抓取工具")
 
 # --- 侧边栏配置 ---
 with st.sidebar:
