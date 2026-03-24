@@ -7,7 +7,7 @@ import io
 from scraper import scrape
 
 st.set_page_config(page_title="VOC爬虫系统", layout="wide")
-st.title("📊 舆情监控系统")
+st.title("📊 VOC爬虫系统")
 st.markdown("基于Tavily Search 的轻量级舆情抓取工具")
 
 # --- 侧边栏配置 ---
