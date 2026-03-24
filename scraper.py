@@ -80,18 +80,27 @@ def _normalize_url(base_url: str, href: str) -> str | None:
 
 # ⭐️ 核心变更 2：全新的 Tavily 搜索函数
 def search_tavily(query: str, max_results: int = 20, site: str = None) -> list:
-    if not TAVILY_API_KEY:
+    # ⭐️ 动态获取 API Key：先找环境变量，找不到就直接去 Streamlit 兜底拿
+    api_key = os.environ.get("TAVILY_API_KEY", "").strip()
+    if not api_key:
+        try:
+            import streamlit as st
+            # 直接从 Streamlit 的云端保险箱拿钥匙
+            api_key = st.secrets.get("TAVILY_API_KEY", "").strip()
+        except Exception:
+            pass
+
+    if not api_key:
         logger.error("🚨 缺少 TAVILY_API_KEY！请在 Streamlit Secrets 中配置。")
         return []
     
     url = "https://api.tavily.com/search"
     payload = {
-        "api_key": TAVILY_API_KEY,
+        "api_key": api_key,  # 使用刚刚拿到手的热乎钥匙
         "query": query,
         "max_results": max_results,
         "search_depth": "basic"
     }
-    # 如果指定了网站，Tavily 可以非常精准地只搜这个域名
     if site:
         payload["include_domains"] = [site]
         
@@ -102,7 +111,6 @@ def search_tavily(query: str, max_results: int = 20, site: str = None) -> list:
         
         results = []
         for res in data.get("results", []):
-            # 兼容原有的数据格式
             results.append({
                 "title": res.get("title", ""),
                 "href": res.get("url", ""),
