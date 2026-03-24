@@ -42,6 +42,12 @@ HEADERS = {
     'Connection': 'keep-alive',
 }
 
+# ⭐️ 优化点：使用 Session 保持连接池，大幅提升连续抓取速度，降低被封概率
+session = requests.Session()
+session.headers.update(HEADERS)
+if PROXIES_DICT:
+    session.proxies.update(PROXIES_DICT)
+
 DEFAULT_RAW_DIR = os.environ.get(
     "SCRAPER_RAW_DIR",
     os.path.join(os.path.dirname(__file__), "data", "raw"),
@@ -83,10 +89,11 @@ def get_ddg_timelimit(start_date: datetime, end_date: datetime) -> str:
 
 def search_ddg(query: str, timelimit: str = None, max_results: int = 20) -> list:
     if not HAS_DDGS:
-        raise ImportError("请先安装 duckduckgo-search：pip install duckduckgo-search")
+        raise ImportError("请先安装 ddgs：pip install ddgs")
     results = []
     try:
-        with DDGS(proxies=PROXY_URL or None) as ddgs:
+        # ⭐️ 优化点：修复了 proxies 报错问题，最新版库要求使用单数 proxy
+        with DDGS(proxy=PROXY_URL or None) as ddgs:
             for r in ddgs.text(query, timelimit=timelimit, max_results=max_results):
                 results.append(r)
                 if len(results) >= max_results:
@@ -99,7 +106,8 @@ def search_ddg(query: str, timelimit: str = None, max_results: int = 20) -> list
 def fetch_page(url: str, timeout: int = 20) -> dict | None:
     for attempt in range(3):
         try:
-            resp = requests.get(url, headers=HEADERS, timeout=timeout, proxies=PROXIES_DICT)
+            # ⭐️ 优化点：改用全局 session 获取数据
+            resp = session.get(url, timeout=timeout)
             resp.raise_for_status()
             
             content_type = resp.headers.get('Content-Type', '').lower()
@@ -378,6 +386,7 @@ def scrape(keywords: list, sites: list, start_date: datetime, end_date: datetime
 
     seed_urls = seed_urls or []
     discovered_urls = []
+    
     if seed_urls:
         log(f'🌱 处理种子URL {len(seed_urls)} 个...')
         allow_domains = []
@@ -385,7 +394,12 @@ def scrape(keywords: list, sites: list, start_date: datetime, end_date: datetime
             for s in sites:
                 s = (s or "").strip()
                 if s:
-                    allow_domains.append(s.replace("https://", "").replace("http://", "").rstrip("/"))
+                    # ⭐️ 优化点：防呆设计，自动为域名补全 .com 
+                    clean_s = s.replace("https://", "").replace("http://", "").rstrip("/")
+                    if "." not in clean_s:
+                        clean_s += ".com"
+                    allow_domains.append(clean_s)
+                    
         for su in seed_urls:
             if stop_event and stop_event.is_set():
                 log('⏹ 任务已手动停止')
@@ -426,6 +440,11 @@ def scrape(keywords: list, sites: list, start_date: datetime, end_date: datetime
             if not site:
                 continue
             clean_site = site.replace('https://', '').replace('http://', '').rstrip('/')
+            
+            # ⭐️ 优化点：核心防呆，如果你输入 zhihu，自动变成 zhihu.com
+            if "." not in clean_site:
+                clean_site += ".com"
+                
             query = f'{keyword_str} site:{clean_site}'
             log(f'🔍 搜索 {clean_site}: "{keyword_str}"')
             try:
@@ -536,22 +555,3 @@ def scrape(keywords: list, sites: list, start_date: datetime, end_date: datetime
             'meta': meta,
             'images': images,
             'raw_html_path': raw_html_relpath,
-            'seed_url': hit.get('_seed', ''),
-            'match_keywords': bool(is_match),
-        })
-
-        time.sleep(random.uniform(0.8, 1.8))
-
-    matched = [r for r in results if r.get("match_keywords")]
-    if matched:
-        log(f'✅ 抓取完成（命中关键词 {len(matched)} / 总归档 {len(results)}）')
-        return matched
-
-    fallback = []
-    for r in results:
-        if r.get("seed_url") and r.get("url") == r.get("seed_url"):
-            fallback.append(r)
-    if not fallback:
-        fallback = results[:1]
-    log(f'✅ 抓取完成（未命中关键词，已返回兜底归档 {len(fallback)} 条，方便“仅存档/每日一篇”）')
-    return fallback
